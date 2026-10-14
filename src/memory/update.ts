@@ -18,8 +18,8 @@ import { PLUGIN_VERSION } from '@/version';
  */
 const CURRENT_VERSION = PLUGIN_VERSION;
 
-/** 远端 manifest:GitHub raw(带时间戳绕缓存)。homePage 指向 baibai-git/ST-BaiBai-Book。 */
-const REMOTE_MANIFEST_URL = 'https://raw.githubusercontent.com/baibai-git/ST-BaiBai-Book/main/manifest.json';
+/** 远端 manifest:GitHub raw(带时间戳绕缓存)。homePage 指向 laolu237-oss/YIJI。 */
+const REMOTE_MANIFEST_URL = 'https://raw.githubusercontent.com/laolu237-oss/YIJI/main/manifest.json';
 
 /** 对外响应式状态:驱动设置 tab 角标与设置页版本区块。 */
 export const updateState = reactive<{

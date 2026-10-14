@@ -1,4 +1,12 @@
-# 柏宝书 · SillyTavern 记忆引擎
+> [!WARNING]
+> **个人自用魔改版 · 非官方项目**
+>
+> 本仓库基于原作者 **柏柏** 的开源项目二次修改，仅供本人自用，**不代表原作者立场，也不提供官方支持与更新**。
+> 原项目：**柏宝书** → <https://github.com/baibai-git/ST-BaiBai-Book>
+
+---
+
+# 柏宝书（个人魔改版）· SillyTavern 记忆引擎
 
 > 让你的角色真正「记得住」。柏宝书是一个为 SillyTavern 打造的长期记忆扩展——它会一边陪你聊，一边默默把剧情整理成摘要、盘点物品、记住登场人物、梳理来龙去脉，再在恰当的时候把这些记忆悄悄递给 AI。既省 token，又让长篇对话前后连贯、不失忆、不崩人设。
 
@@ -54,7 +62,7 @@
 在 SillyTavern 的「扩展 → 安装扩展」里填入本仓库地址即可：
 
 ```
-https://github.com/baibai-git/ST-BaiBai-Book
+https://github.com/laolu237-oss/YIJI
 ```
 
 安装后进入柏宝书的「设置」页，打开总开关「柏宝书 · 记忆引擎」，按需配置摘要与向量记忆，就能开始使用了。设置会随 SillyTavern 保存在服务器，跨设备、跨局域网自动同步。
@@ -75,6 +83,5 @@ https://github.com/baibai-git/ST-BaiBai-Book
 
 ---
 
-作者：柏柏 · 欢迎反馈与建议。
-</content>
-</invoke>
+**原项目**：[柏宝书](https://github.com/baibai-git/ST-BaiBai-Book) · 作者 **柏柏**
+**本仓库**：个人自用魔改版（laolu237-oss 维护）· 非官方，不提供支持与更新
