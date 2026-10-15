@@ -11,3 +11,11 @@ CLAUDE.md
 AGENTS.md
 .pi/
 data/
+
+# 本地配置文件与密钥防护(防误提交酒馆设置/密钥)
+.env
+.env.*
+settings.json
+*.local.json
+*.local.yaml
+secrets.json

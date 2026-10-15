@@ -109,8 +109,11 @@ export const ui = reactive<UiState>({
   orbSize: apiSettings.ui.orbSize,
 });
 
-// settings 跨设备同步值就绪后,把主题/导航回灌进 ui(覆盖 import 阶段的默认)
-onSettingsReady(() => {
+/**
+ * 把 apiSettings.ui 的同步值回灌进 ui 运行态。
+ * 调用时机:① hydrate 完成(覆盖 import 阶段的默认);② 导入配置后(界面项即时生效,不必等刷新)。
+ */
+export function applySettingsUiToUi(): void {
   ui.theme = validTheme(apiSettings.ui.theme);
   ui.navPosition = validNav(apiSettings.ui.navPosition);
   ui.navTapClose = apiSettings.ui.navTapClose;
@@ -122,7 +125,10 @@ onSettingsReady(() => {
   ui.orbShape = validOrbShape(apiSettings.ui.orbShape);
   ui.orbOpacity = apiSettings.ui.orbOpacity;
   ui.orbSize = apiSettings.ui.orbSize;
-});
+}
+
+// settings 跨设备同步值就绪后,把主题/导航回灌进 ui(覆盖 import 阶段的默认)
+onSettingsReady(applySettingsUiToUi);
 
 // ui 改变 → 写回 apiSettings.ui(由 settings 的 watch 防抖落盘、跨设备同步);activePage 仍存本机。
 watch(

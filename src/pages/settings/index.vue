@@ -25,6 +25,7 @@ import { recallDebug } from '@/memory/vector/debug';
 import { computeCarryoverPlan, createNewChatWithCarryover, type CarryoverPlan } from '@/memory/carryover';
 import { computeMigrationPlan, runHoraeMigration, type MigrationPlan } from '@/memory/migrate';
 import { ui, THEMES, ORB_SHAPES, type NavPosition } from '@/state/ui';
+import { downloadTransferFile, importTransferFile } from '@/api/configTransfer';
 import { uploadOrbImage } from '@/st/upload';
 import { toast } from '@/st/toast';
 import { versionedAssetUrl } from '@/version';
@@ -413,6 +414,55 @@ async function confirmUpdate() {
     toastr?.success?.('更新成功,正在刷新页面…', '柏宝书');
   } catch (e) {
     toastr?.error?.(`更新失败:${e instanceof Error ? e.message : String(e)}`, '柏宝书');
+  }
+}
+
+/* —— 配置导入导出:整机设置备份/迁移。副 API(渠道 + 摘要/总结指派)不参与,见 api/configTransfer.ts —— */
+const transferBusy = ref(false);
+const transferMsg = ref('');
+const transferError = ref(false);
+const importFileInput = ref<HTMLInputElement | null>(null);
+// 选完文件不直接应用:先过确认弹窗(覆盖性操作,给一次后悔机会),确认后才真正导入
+const importConfirmOpen = ref(false);
+const pendingFile = ref<File | null>(null);
+
+function doExportConfig() {
+  try {
+    downloadTransferFile(updateState.current);
+    transferError.value = false;
+    transferMsg.value = '已导出配置文件(不含副 API)。';
+  } catch (e) {
+    transferError.value = true;
+    transferMsg.value = `导出失败:${e instanceof Error ? e.message : String(e)}`;
+  }
+}
+function pickImportFile() {
+  transferMsg.value = '';
+  importFileInput.value?.click();
+}
+function onImportFile(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = ''; // 复位,允许重复选同一文件
+  if (!file) return;
+  pendingFile.value = file;
+  importConfirmOpen.value = true;
+}
+function cancelImport() {
+  pendingFile.value = null;
+}
+async function confirmImport() {
+  const file = pendingFile.value;
+  pendingFile.value = null;
+  if (!file) return;
+  transferBusy.value = true;
+  transferMsg.value = '';
+  try {
+    const r = await importTransferFile(file);
+    transferError.value = !r.ok;
+    transferMsg.value = r.ok ? r.message : r.error;
+  } finally {
+    transferBusy.value = false;
   }
 }
 
@@ -1638,6 +1688,36 @@ function exportPublicApiDocument() {
           </button>
         </div>
       </Collapsible>
+
+      <!-- 配置导入导出:整机设置备份/迁移。副 API(渠道 + 指派)不随文件走 -->
+      <Collapsible title="配置导入导出" :open="false">
+        <p class="bbs-field-hint">
+          <strong>导出</strong>:把当前设置(基本设置、副 API 以外的全部选项——摘要/注入/排除/提示词/向量记忆等)下载为
+          JSON 备份文件,可用于换设备、换账户或重置前存档。<strong>副 API(渠道与摘要/总结指派)不进入导出文件</strong>
+          ——渠道由酒馆扩展设置跨设备同步,且与柏宝绘共用同一份,不随配置文件走。
+        </p>
+        <p class="bbs-field-hint">
+          <strong>导入</strong>:选择此前导出的文件,文件中有的设置项才会覆盖当前值,缺少的项保持当前值不变;
+          副 API 渠道与指派同样不受影响。文件中含向量端点密钥等敏感信息,请妥善保管,勿外传。
+        </p>
+        <div class="bbs-transfer-bar">
+          <button class="bbs-btn bbs-btn-primary" type="button" @click="doExportConfig">
+            <Icon name="download" /> 导出配置
+          </button>
+          <button class="bbs-btn" type="button" :disabled="transferBusy" @click="pickImportFile">
+            <Icon name="upload" /> 导入配置
+          </button>
+          <!-- 隐藏的原生文件选择:点「导入配置」触发,选完即复位(可重复选同一文件) -->
+          <input
+            ref="importFileInput"
+            class="bbs-transfer-input"
+            type="file"
+            accept=".json,application/json"
+            @change="onImportFile"
+          />
+        </div>
+        <p v-if="transferMsg" class="bbs-field-hint" :class="{ 'is-error': transferError }">{{ transferMsg }}</p>
+      </Collapsible>
     </div>
 
     <!-- 带数据创建新对话 / Horae 迁移 的确认弹窗 -->
@@ -1656,6 +1736,20 @@ function exportPublicApiDocument() {
       @confirm="runMigrate"
     >
       {{ migrateConfirmText }}
+    </ConfirmDialog>
+
+    <!-- 导入配置二次确认:覆盖性操作,确认前让用户看清影响范围 -->
+    <ConfirmDialog
+      v-model:open="importConfirmOpen"
+      title="导入配置"
+      confirm-text="导入"
+      confirm-icon="upload"
+      tone="primary"
+      @confirm="confirmImport"
+      @cancel="cancelImport"
+    >
+      将用所选文件<b>{{ pendingFile?.name || '' }}</b>中的设置覆盖当前设置(文件中没有的项保持当前值)。<br />
+      副 API 渠道与摘要/总结指派不受影响。确定导入吗?
     </ConfirmDialog>
 
     <!-- ===== 渠道编辑弹窗 ===== -->
@@ -2107,6 +2201,21 @@ function exportPublicApiDocument() {
 .bbs-data-export-text {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* —— 配置导入导出:按钮横排 + 隐藏的原生文件选择 —— */
+.bbs-transfer-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.bbs-transfer-input {
+  display: none;
+}
+/* 操作结果提示:出错时转危险色(成功用常规墨色) */
+.bbs-field-hint.is-error {
+  color: var(--bbs-danger);
 }
 
 .bbs-segmented {

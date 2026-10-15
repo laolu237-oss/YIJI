@@ -906,6 +906,47 @@ export function hydrateSettings(): void {
   }
 }
 
+/* ============ 配置导入(副 API 不参与,入口见 api/configTransfer.ts) ============ */
+
+function isPlainRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+/**
+ * 深合并:以 base 为基,incoming 里出现的键才覆盖;incoming 没有的键保持 base 原值。
+ * 两侧同为纯对象时逐字段递归(嵌套设置逐个字段覆盖);其余情况(含数组)整体替换。
+ * incoming 为 undefined 的键同样保持 base——「文件中缺的字段不动当前值」靠它。
+ */
+function deepMergeDefined(base: unknown, incoming: unknown): unknown {
+  if (isPlainRecord(base) && isPlainRecord(incoming)) {
+    const out: Record<string, unknown> = { ...base };
+    for (const [k, v] of Object.entries(incoming)) {
+      out[k] = deepMergeDefined(base[k], v);
+    }
+    return out;
+  }
+  return incoming === undefined ? base : incoming;
+}
+
+/**
+ * 应用导入的配置(来自导出文件的 settings 段,见 api/configTransfer.ts)。
+ *
+ * 语义:合并基线 = 当前设置,文件中出现的键才覆盖,缺少的键保持当前值;
+ * 合并结果整体过一遍 normalize(与 hydrate 同款逐字段校验,类型不符回退默认)。
+ * **副 API 不导入**:channels / assignments 恒取当前值——渠道由共享存储接管,
+ * 导入动它等于把别的机器的渠道列表倒灌进与柏宝绘共享的列表。
+ */
+export function applyImportedConfig(rawSettings: unknown): void {
+  const incoming = isPlainRecord(rawSettings) ? rawSettings : {};
+  // 双保险:文件里若夹带副 API 字段,合并前剔除(导出时本就不含这两个键)
+  const { channels: _ignoredChannels, assignments: _ignoredAssignments, ...rest } = incoming;
+  const merged = deepMergeDefined(JSON.parse(JSON.stringify(apiSettings)), rest) as Record<string, unknown>;
+  const normalized = normalize(merged);
+  // applyInto 会连 channels/assignments 一起写;normalize 对这两个键给的是空默认,
+  // 用当前值覆盖回去,保证副 API(含共享存储镜像)不被导入触碰。
+  applyInto(apiSettings, { ...normalized, channels: apiSettings.channels, assignments: apiSettings.assignments });
+}
+
 watch(
   apiSettings,
   () => {
