@@ -453,6 +453,8 @@ function cancelImport() {
 }
 async function confirmImport() {
   const file = pendingFile.value;
+  // ConfirmDialog 的 confirm 只发事件、不自动关窗(与 confirmUpdate 同款,见组件注释),须显式关闭
+  importConfirmOpen.value = false;
   pendingFile.value = null;
   if (!file) return;
   transferBusy.value = true;
